@@ -9,6 +9,24 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF and Security Settings
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.railway.app',
+    'https://*.up.railway.app',
+]
+
+# Add custom domain from environment variable if exists
+CSRF_DOMAIN = os.environ.get('CSRF_TRUSTED_ORIGINS')
+if CSRF_DOMAIN:
+    CSRF_TRUSTED_ORIGINS.extend(CSRF_DOMAIN.split(','))
+
+# Security for production
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

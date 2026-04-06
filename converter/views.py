@@ -25,7 +25,7 @@ def gemini_extract(file_bytes, mime_type):
     if not api_key:
         return None, "GOOGLE_API_KEY not configured."
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     b64 = base64.b64encode(file_bytes).decode('utf-8')
 
     prompt = """
@@ -69,7 +69,7 @@ def gemini_agent(query, df, file_bytes, mime_type):
     if not api_key:
         return "API key missing.", df
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     b64 = base64.b64encode(file_bytes).decode('utf-8')
     cols = df.columns.tolist()
     sample = df.head(5).to_csv(index=False)

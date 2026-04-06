@@ -1,114 +1,107 @@
 {% extends "base.html" %}
 
+{% block title %}Sign In — DataForge Pro{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { font-family: 'Inter', sans-serif; background: var(--dark); color: var(--text); min-height: 100vh; display: flex; }
+
+    .auth-left {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        padding: 48px;
+        position: relative; overflow: hidden;
+    }
+    .auth-left::before {
+        content: '';
+        position: absolute; top: -150px; left: -150px;
+        width: 600px; height: 600px;
+        background: radial-gradient(circle, rgba(108,92,231,0.2), transparent 65%);
+        pointer-events: none;
+    }
+    .auth-left::after {
+        content: '';
+        position: absolute; bottom: -100px; right: -100px;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(0,206,201,0.12), transparent 65%);
+        pointer-events: none;
+    }
+
+    .auth-card {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 24px;
+        padding: 44px 40px;
+        width: 100%; max-width: 420px;
+        position: relative; z-index: 1;
+    }
+    .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
+    .auth-logo-icon {
+        width: 42px; height: 42px; border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .auth-logo-text { font-size: 20px; font-weight: 700; }
+    .auth-logo-text span { color: var(--primary-light); }
+    .auth-title { font-size: 26px; font-weight: 800; letter-spacing: -0.8px; margin-bottom: 6px; }
+    .auth-sub { color: var(--text-muted); font-size: 15px; margin-bottom: 32px; }
+
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; }
+    .input-wrap { position: relative; }
+    .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; }
+    .form-control {
+        width: 100%; padding: 13px 14px 13px 42px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 11px; color: var(--text);
+        font-size: 15px; font-family: inherit;
+        transition: border-color 0.2s, background 0.2s;
+    }
+    .form-control:focus { outline: none; border-color: var(--primary); background: rgba(108,92,231,0.07); }
+    .form-control::placeholder { color: var(--text-muted); }
+
+    .btn-submit {
+        width: 100%; padding: 14px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: white; border: none; border-radius: 11px;
+        font-size: 16px; font-weight: 700; cursor: pointer;
+        box-shadow: 0 4px 20px rgba(108,92,231,0.35);
+        transition: all 0.2s; margin-top: 8px;
+        display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(108,92,231,0.45); }
+
+    .auth-footer { text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted); }
+    .auth-footer a { color: var(--primary-light); text-decoration: none; font-weight: 600; }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .alert-error {
+        background: rgba(214,48,49,0.1); border: 1px solid rgba(214,48,49,0.3);
+        color: #ff7675; padding: 12px 16px; border-radius: 10px;
+        font-size: 14px; margin-bottom: 20px;
+        display: flex; align-items: center; gap: 8px;
+    }
+
+    .auth-right {
+        width: 420px; background: var(--dark-2);
+        border-left: 1px solid rgba(255,255,255,0.06);
+        display: flex; align-items: center; justify-content: center; padding: 48px;
+    }
+    .features-list { display: flex; flex-direction: column; gap: 24px; }
+    .feature-item { display: flex; align-items: flex-start; gap: 16px; }
+    .feature-item-icon {
+        width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+        background: rgba(108,92,231,0.15);
+        display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .feature-item-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .feature-item-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+    @media (max-width: 768px) { .auth-right { display: none; } .auth-left { padding: 24px; } .auth-card { padding: 32px 24px; } }
+</style>
+{% endblock %}
+
 {% block auth_content %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In — DataForge Pro</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root { --primary: #6C5CE7; --primary-light: #a29bfe; --accent: #00cec9; --dark: #0f0e17; --dark-2: #1a1a2e; --text: #e8e8f0; --text-muted: #8888aa; }
-        body { font-family: 'Inter', sans-serif; background: var(--dark); color: var(--text); min-height: 100vh; display: flex; }
-
-        .auth-left {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            padding: 48px;
-            position: relative; overflow: hidden;
-        }
-        .auth-left::before {
-            content: '';
-            position: absolute; top: -150px; left: -150px;
-            width: 600px; height: 600px;
-            background: radial-gradient(circle, rgba(108,92,231,0.2), transparent 65%);
-            pointer-events: none;
-        }
-        .auth-left::after {
-            content: '';
-            position: absolute; bottom: -100px; right: -100px;
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(0,206,201,0.12), transparent 65%);
-            pointer-events: none;
-        }
-
-        .auth-card {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 24px;
-            padding: 44px 40px;
-            width: 100%; max-width: 420px;
-            position: relative; z-index: 1;
-        }
-        .auth-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 36px; }
-        .auth-logo-icon {
-            width: 42px; height: 42px; border-radius: 12px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            display: flex; align-items: center; justify-content: center; font-size: 20px;
-        }
-        .auth-logo-text { font-size: 20px; font-weight: 700; }
-        .auth-logo-text span { color: var(--primary-light); }
-        .auth-title { font-size: 26px; font-weight: 800; letter-spacing: -0.8px; margin-bottom: 6px; }
-        .auth-sub { color: var(--text-muted); font-size: 15px; margin-bottom: 32px; }
-
-        .form-group { margin-bottom: 18px; }
-        .form-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-muted); margin-bottom: 8px; }
-        .input-wrap { position: relative; }
-        .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; }
-        .form-control {
-            width: 100%; padding: 13px 14px 13px 42px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 11px; color: var(--text);
-            font-size: 15px; font-family: inherit;
-            transition: border-color 0.2s, background 0.2s;
-        }
-        .form-control:focus { outline: none; border-color: var(--primary); background: rgba(108,92,231,0.07); }
-        .form-control::placeholder { color: var(--text-muted); }
-
-        .btn-submit {
-            width: 100%; padding: 14px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            color: white; border: none; border-radius: 11px;
-            font-size: 16px; font-weight: 700; cursor: pointer;
-            box-shadow: 0 4px 20px rgba(108,92,231,0.35);
-            transition: all 0.2s; margin-top: 8px;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-        }
-        .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(108,92,231,0.45); }
-
-        .auth-footer { text-align: center; margin-top: 24px; font-size: 14px; color: var(--text-muted); }
-        .auth-footer a { color: var(--primary-light); text-decoration: none; font-weight: 600; }
-        .auth-footer a:hover { text-decoration: underline; }
-
-        .alert-error {
-            background: rgba(214,48,49,0.1); border: 1px solid rgba(214,48,49,0.3);
-            color: #ff7675; padding: 12px 16px; border-radius: 10px;
-            font-size: 14px; margin-bottom: 20px;
-            display: flex; align-items: center; gap: 8px;
-        }
-
-        .auth-right {
-            width: 420px; background: var(--dark-2);
-            border-left: 1px solid rgba(255,255,255,0.06);
-            display: flex; align-items: center; justify-content: center; padding: 48px;
-        }
-        .features-list { display: flex; flex-direction: column; gap: 24px; }
-        .feature-item { display: flex; align-items: flex-start; gap: 16px; }
-        .feature-item-icon {
-            width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
-            background: rgba(108,92,231,0.15);
-            display: flex; align-items: center; justify-content: center; font-size: 18px;
-        }
-        .feature-item-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-        .feature-item-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-
-        @media (max-width: 768px) { .auth-right { display: none; } .auth-left { padding: 24px; } .auth-card { padding: 32px 24px; } }
-    </style>
-</head>
-<body>
 <div class="auth-left">
     <div class="auth-card">
         <div class="auth-logo">
@@ -170,6 +163,4 @@
         </div>
     </div>
 </div>
-</body>
-</html>
 {% endblock %}
