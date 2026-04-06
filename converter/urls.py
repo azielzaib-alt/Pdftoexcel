@@ -7,4 +7,5 @@ urlpatterns = [
     path('convert/', views.convert, name='convert'),
     path('chat/', views.chat, name='chat'),
     path('download/', views.download_excel, name='download_excel'),
+    path('unlock/', views.unlock_lifetime, name='unlock_lifetime'),
 ]

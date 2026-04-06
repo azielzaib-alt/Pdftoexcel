@@ -201,6 +201,23 @@ def convert(request):
 
 
 @login_required
+def unlock_lifetime(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    
+    data = json.loads(request.body)
+    key = data.get('key', '')
+    
+    if key == 'SSAA1122':
+        profile = get_or_create_profile(request.user)
+        profile.is_lifetime_free = True
+        profile.save()
+        return JsonResponse({'success': True, 'message': 'Lifetime access unlocked!'})
+    else:
+        return JsonResponse({'success': False, 'error': 'Invalid security key.'}, status=400)
+
+
+@login_required
 def chat(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)

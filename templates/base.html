@@ -286,7 +286,11 @@
                 <div class="user-avatar">{{ user.username|first|upper }}</div>
                 <div class="user-info">
                     <div class="user-name">{{ user.username }}</div>
-                    <div class="user-plan plan-{{ user.profile.plan }}">{{ user.profile.plan|title }} Plan</div>
+                    {% if user.profile.is_lifetime_free %}
+                    <div class="user-plan plan-pro">Lifetime Free</div>
+                    {% else %}
+                    <div class="user-plan plan-free">Standard Account</div>
+                    {% endif %}
                 </div>
             </div>
         </div>

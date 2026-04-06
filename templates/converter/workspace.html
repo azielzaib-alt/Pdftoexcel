@@ -277,13 +277,18 @@ function uploadFile(file) {
     fd.append('document', file);
     fd.append('csrfmiddlewaretoken', CSRF);
     fetch('{% url "convert" %}', { method: 'POST', body: fd })
-        .then(r => r.json())
+        .then(r => {
+            if(r.status === 403) return { success: false, is_limit: true };
+            return r.json();
+        })
         .then(data => {
+            overlay.classList.remove('show');
             if(data.success) {
                 showToast('Document extracted successfully!', 'success');
                 window.location.reload();
+            } else if (data.is_limit) {
+                showKeyPrompt();
             } else {
-                overlay.classList.remove('show');
                 showToast(data.error || 'Extraction failed.', 'error');
             }
         })
@@ -291,6 +296,27 @@ function uploadFile(file) {
             overlay.classList.remove('show');
             showToast('Network error. Please try again.', 'error');
         });
+}
+
+function showKeyPrompt() {
+    const key = prompt("⚠️ Conversion limit reached!\nTo unlock lifetime free access, please enter your security key:");
+    if (!key) return;
+    
+    fetch('{% url "unlock_lifetime" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ key })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if(data.success) {
+            alert("✅ " + data.message);
+            window.location.reload();
+        } else {
+            alert("❌ " + data.error);
+        }
+    })
+    .catch(() => alert("Network error."));
 }
 
 function fillChat(text) {

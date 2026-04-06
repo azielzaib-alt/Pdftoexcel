@@ -4,22 +4,16 @@ from django.contrib.auth.models import User
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
-    plan = models.CharField(max_length=20, default='free', choices=[
-        ('free', 'Free'),
-        ('pro', 'Pro'),
-        ('enterprise', 'Enterprise'),
-    ])
+    is_lifetime_free = models.BooleanField(default=False)
     conversions_used = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.plan}"
-
-    @property
-    def conversions_limit(self):
-        limits = {'free': 5, 'pro': 100, 'enterprise': 99999}
-        return limits.get(self.plan, 5)
+        status = "Lifetime" if self.is_lifetime_free else "Standard"
+        return f"{self.user.username} - {status}"
 
     @property
     def can_convert(self):
-        return self.conversions_used < self.conversions_limit
+        if self.is_lifetime_free:
+            return True
+        return self.conversions_used < 5
