@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — DataForge Pro{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'workspace' %}" class="btn btn-primary btn-sm">
+    <i class="fas fa-plus"></i> New Conversion
+</a>
+{% endblock %}
+
+{% block content %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 20px 22px; }
+    .stat-card-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 10px; }
+    .stat-card-value { font-size: 32px; font-weight: 800; letter-spacing: -1.5px; }
+    .stat-card-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .stat-icon { float: right; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .icon-purple { background: rgba(108,92,231,0.15); }
+    .icon-teal { background: rgba(0,206,201,0.15); }
+    .icon-yellow { background: rgba(253,203,110,0.15); }
+    .icon-green { background: rgba(0,184,148,0.15); }
+
+    .two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+    .section-heading { font-size: 15px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .section-heading i { color: var(--primary-light); }
+
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state .empty-icon { font-size: 40px; margin-bottom: 14px; }
+    .empty-state p { font-size: 14px; margin-bottom: 20px; }
+
+    .quota-block { margin-bottom: 20px; }
+    .quota-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .quota-label { font-size: 13px; color: var(--text-muted); }
+    .quota-count { font-size: 13px; font-weight: 600; }
+    .progress-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 99px; transition: width 0.5s ease; }
+    .quota-warning { font-size: 11px; color: var(--warning); }
+
+    .plan-card { background: linear-gradient(135deg, rgba(108,92,231,0.12), rgba(0,206,201,0.08)); border: 1px solid rgba(108,92,231,0.25); border-radius: 14px; padding: 20px; }
+    .plan-current { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+    .plan-name-big { font-size: 22px; font-weight: 800; margin-bottom: 14px; }
+    .plan-perks { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+    .plan-perk { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+    .plan-perk i { color: var(--accent); font-size: 11px; }
+
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon icon-purple">📄</div>
+        <div class="stat-card-label">Total Conversions</div>
+        <div class="stat-card-value">{{ conversions|length }}</div>
+        <div class="stat-card-sub">All time</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon icon-teal">✅</div>
+        <div class="stat-card-label">Successful</div>
+        <div class="stat-card-value">{% with done=conversions|length %}{{ done }}{% endwith %}</div>
+        <div class="stat-card-sub">Completed extractions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon icon-yellow">📊</div>
+        <div class="stat-card-label">Used This Month</div>
+        <div class="stat-card-value">{{ profile.conversions_used }}</div>
+        <div class="stat-card-sub">of {{ profile.conversions_limit }} limit</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon icon-green">🎯</div>
+        <div class="stat-card-label">Plan</div>
+        <div class="stat-card-value" style="font-size:22px;">{{ profile.plan|title }}</div>
+        <div class="stat-card-sub">Current subscription</div>
+    </div>
+</div>
+
+<div class="two-col">
+    <!-- Recent Conversions -->
+    <div class="card">
+        <div class="section-heading"><i class="fas fa-history"></i> Recent Conversions</div>
+        {% if conversions %}
+        <div style="overflow-x:auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>File</th>
+                        <th>Rows</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in conversions %}
+                    <tr>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <span style="font-size:16px;">📄</span>
+                                <span style="font-size:13px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.filename }}</span>
+                            </div>
+                        </td>
+                        <td>{{ c.rows_extracted }}</td>
+                        <td>
+                            <span class="badge badge-{% if c.status == 'done' %}success{% elif c.status == 'failed' %}danger{% else %}processing{% endif %}">
+                                {{ c.status|title }}
+                            </span>
+                        </td>
+                        <td style="color:var(--text-muted);font-size:12px;">{{ c.created_at|date:"M d, H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📂</div>
+            <p>No conversions yet. Upload your first document to get started.</p>
+            <a href="{% url 'workspace' %}" class="btn btn-primary btn-sm">
+                <i class="fas fa-upload"></i> Upload Document
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Panel -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+        <!-- Usage Quota -->
+        <div class="card">
+            <div class="section-heading"><i class="fas fa-chart-pie"></i> Monthly Usage</div>
+            <div class="quota-block">
+                <div class="quota-header">
+                    <span class="quota-label">Conversions Used</span>
+                    <span class="quota-count">{{ profile.conversions_used }} / {{ profile.conversions_limit }}</span>
+                </div>
+                {% with pct=profile.conversions_used|floatformat:0 %}
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {% widthratio profile.conversions_used profile.conversions_limit 100 %}%"></div>
+                </div>
+                {% endwith %}
+                {% if not profile.can_convert %}
+                <div class="quota-warning"><i class="fas fa-exclamation-triangle"></i> Limit reached. Upgrade to continue.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Plan Card -->
+        <div class="plan-card">
+            <div class="plan-current">Current Plan</div>
+            <div class="plan-name-big">{{ profile.plan|title }} <span class="badge badge-{{ profile.plan }}">{{ profile.plan|upper }}</span></div>
+            <div class="plan-perks">
+                <div class="plan-perk"><i class="fas fa-check-circle"></i> {{ profile.conversions_limit }} conversions/month</div>
+                <div class="plan-perk"><i class="fas fa-check-circle"></i> AI chat assistant</div>
+                <div class="plan-perk"><i class="fas fa-check-circle"></i> Excel export</div>
+                {% if profile.plan == 'free' %}
+                <div class="plan-perk"><i class="fas fa-times-circle" style="color:var(--text-muted)"></i> Priority processing</div>
+                {% endif %}
+            </div>
+            {% if profile.plan == 'free' %}
+            <a href="#" class="btn btn-primary btn-sm btn-full">
+                <i class="fas fa-crown"></i> Upgrade to Pro
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Quick Start -->
+        <div class="card">
+            <div class="section-heading"><i class="fas fa-rocket"></i> Quick Start</div>
+            <a href="{% url 'workspace' %}" class="btn btn-primary btn-full" style="margin-bottom:10px;">
+                <i class="fas fa-magic"></i> New Conversion
+            </a>
+            {% if request.session.df_json %}
+            <a href="{% url 'workspace' %}" class="btn btn-ghost btn-full">
+                <i class="fas fa-table"></i> Resume Last Session
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

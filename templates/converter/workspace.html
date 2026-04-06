@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+{% block title %}Workspace — DataForge Pro{% endblock %}
+{% block topbar_title %}AI Workspace{% endblock %}
+
+{% block topbar_actions %}
+{% if df_data %}
+<a href="{% url 'download_excel' %}" class="btn btn-success btn-sm">
+    <i class="fas fa-download"></i> Download Excel
+</a>
+<button onclick="clearSession()" class="btn btn-ghost btn-sm">
+    <i class="fas fa-redo"></i> New File
+</button>
+{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .workspace-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 20px;
+        align-items: start;
+    }
+
+    /* Upload Zone */
+    .upload-zone {
+        border: 2px dashed rgba(108,92,231,0.3);
+        border-radius: 18px;
+        padding: 60px 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: rgba(108,92,231,0.03);
+        position: relative;
+        overflow: hidden;
+    }
+    .upload-zone:hover, .upload-zone.drag-over {
+        border-color: var(--primary);
+        background: rgba(108,92,231,0.07);
+        transform: translateY(-2px);
+    }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-icon { font-size: 52px; margin-bottom: 18px; display: block; }
+    .upload-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .upload-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+    .upload-types { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .type-badge { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+    /* Processing overlay */
+    .processing-overlay {
+        position: absolute; inset: 0;
+        background: rgba(15,14,23,0.9);
+        display: none; align-items: center; justify-content: center;
+        flex-direction: column; gap: 16px; border-radius: 16px;
+        z-index: 10;
+    }
+    .processing-overlay.show { display: flex; }
+    .processing-text { font-size: 15px; font-weight: 600; color: var(--primary-light); }
+    .processing-sub { font-size: 13px; color: var(--text-muted); }
+
+    /* Reasoning box */
+    .reasoning-box {
+        background: rgba(33,150,243,0.08);
+        border: 1px solid rgba(33,150,243,0.2);
+        border-left: 4px solid #2196f3;
+        border-radius: 10px; padding: 16px;
+        margin-bottom: 20px; font-size: 13px; color: #90caf9;
+        line-height: 1.6;
+    }
+    .reasoning-box strong { color: #64b5f6; display: block; margin-bottom: 6px; }
+
+    /* Data table container */
+    .table-container {
+        overflow: auto;
+        max-height: 460px;
+        border-radius: 12px;
+        border: 1px solid var(--card-border);
+    }
+    .table-container table { font-size: 13px; min-width: 100%; }
+    .table-container th { position: sticky; top: 0; z-index: 2; background: #1a1a2e; }
+
+    /* Chat */
+    .chat-wrap { display: flex; flex-direction: column; height: 100%; }
+    .chat-header { padding: 0 0 16px; border-bottom: 1px solid var(--card-border); margin-bottom: 16px; }
+    .chat-header-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .chat-header-title i { color: var(--primary-light); }
+    .chat-messages {
+        flex: 1; overflow-y: auto;
+        display: flex; flex-direction: column; gap: 12px;
+        padding-right: 4px; min-height: 300px; max-height: 420px;
+        margin-bottom: 16px;
+    }
+    .msg { max-width: 88%; padding: 12px 16px; border-radius: 16px; font-size: 13px; line-height: 1.5; }
+    .msg-user { align-self: flex-end; background: var(--primary); color: white; border-radius: 16px 16px 4px 16px; }
+    .msg-ai { align-self: flex-start; background: rgba(255,255,255,0.06); border: 1px solid var(--card-border); border-radius: 16px 16px 16px 4px; }
+    .msg-ai.thinking { color: var(--text-muted); font-style: italic; }
+    .chat-input-row { display: flex; gap: 8px; }
+    .chat-input { flex: 1; padding: 11px 14px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 10px; color: var(--text); font-size: 14px; font-family: inherit; }
+    .chat-input:focus { outline: none; border-color: var(--primary); }
+    .chat-input::placeholder { color: var(--text-muted); }
+    .chat-send { padding: 11px 16px; background: var(--primary); border: none; border-radius: 10px; color: white; cursor: pointer; font-size: 15px; transition: background 0.2s; }
+    .chat-send:hover { background: var(--primary-dark); }
+    .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Suggestions */
+    .chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .suggestion { background: rgba(108,92,231,0.1); border: 1px solid rgba(108,92,231,0.25); color: var(--primary-light); font-size: 11px; padding: 5px 10px; border-radius: 20px; cursor: pointer; transition: all 0.2s; }
+    .suggestion:hover { background: rgba(108,92,231,0.2); }
+
+    /* Stats row */
+    .data-stats { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+    .data-stat { background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 16px; font-size: 13px; }
+    .data-stat span { font-weight: 700; color: var(--primary-light); }
+
+    @media (max-width: 900px) { .workspace-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="workspace-grid">
+
+    <!-- Left: Upload / Data -->
+    <div>
+        {% if not df_data %}
+        <!-- Upload Card -->
+        <div class="card" style="padding:0;overflow:hidden;position:relative;">
+            <div class="upload-zone" id="uploadZone">
+                <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" onchange="handleFile(this)">
+                <span class="upload-icon">🧠</span>
+                <div class="upload-title">Drop your document here</div>
+                <div class="upload-sub">Our AI will analyze, extract, and structure your data automatically</div>
+                <div class="upload-types">
+                    <span class="type-badge">📄 PDF</span>
+                    <span class="type-badge">🖼️ JPG</span>
+                    <span class="type-badge">🖼️ PNG</span>
+                </div>
+            </div>
+            <div class="processing-overlay" id="processingOverlay">
+                <div class="spinner" style="width:40px;height:40px;border-width:3px;"></div>
+                <div class="processing-text">🧠 AI is analyzing your document...</div>
+                <div class="processing-sub">Extracting tables, inferring headers, structuring data</div>
+            </div>
+        </div>
+        <div style="margin-top:20px;">
+            <div class="card" style="background:rgba(108,92,231,0.05);border-color:rgba(108,92,231,0.2);">
+                <div style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary-light);">💡 What can DataForge extract?</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:13px;color:var(--text-muted);">
+                    <div>✅ Invoices &amp; Receipts</div>
+                    <div>✅ Bank Statements</div>
+                    <div>✅ Inventory Lists</div>
+                    <div>✅ Data Tables</div>
+                    <div>✅ Order Forms</div>
+                    <div>✅ Any structured data</div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Data View -->
+        <div class="card">
+            {% if reasoning %}
+            <div class="reasoning-box">
+                <strong>🧠 AI Thought Process</strong>
+                {{ reasoning }}
+            </div>
+            {% endif %}
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-table" style="color:var(--primary-light);"></i> Extracted Data
+                </div>
+                <a href="{% url 'download_excel' %}" class="btn btn-success btn-sm">
+                    <i class="fas fa-download"></i> Download .xlsx
+                </a>
+            </div>
+
+            <div class="data-stats">
+                <div class="data-stat"><span>{{ df_data.columns|length }}</span> Columns</div>
+                <div class="data-stat"><span>{{ df_data.rows|length }}</span> Rows</div>
+                <div class="data-stat"><span style="color:var(--success)">✓</span> Ready</div>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            {% for col in df_data.columns %}
+                            <th>{{ col }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        {% for row in df_data.rows %}
+                        <tr>
+                            {% for cell in row %}
+                            <td>{{ cell|default:"—" }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right: Chat Panel -->
+    <div class="card" style="position:sticky;top:80px;">
+        <div class="chat-wrap">
+            <div class="chat-header">
+                <div class="chat-header-title"><i class="fas fa-robot"></i> AI Data Assistant</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+                    {% if df_data %}Ask questions or modify your data{% else %}Upload a document to activate{% endif %}
+                </div>
+            </div>
+
+            {% if df_data %}
+            <div class="chat-suggestions">
+                <span class="suggestion" onclick="fillChat('Add a total row')">Add total row</span>
+                <span class="suggestion" onclick="fillChat('Delete the first row')">Delete row 1</span>
+                <span class="suggestion" onclick="fillChat('What does this document show?')">Describe doc</span>
+                <span class="suggestion" onclick="fillChat('Convert all prices to numeric')">Fix numbers</span>
+            </div>
+            {% endif %}
+
+            <div class="chat-messages" id="chatMessages">
+                {% if chat_history %}
+                    {% for msg in chat_history %}
+                    <div class="msg {% if msg.role == 'user' %}msg-user{% else %}msg-ai{% endif %}">{{ msg.content }}</div>
+                    {% endfor %}
+                {% else %}
+                <div class="msg msg-ai">
+                    👋 Hi! I'm your AI data assistant. {% if df_data %}Your document has been extracted — ask me anything about it, or tell me what to modify!{% else %}Upload a document and I'll help you extract and refine the data.{% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="chat-input-row">
+                <input type="text" class="chat-input" id="chatInput"
+                    placeholder="{% if df_data %}e.g. Add a Total column...{% else %}Upload a file first{% endif %}"
+                    {% if not df_data %}disabled{% endif %}
+                    onkeydown="if(event.key==='Enter')sendChat()">
+                <button class="chat-send" id="chatSend" onclick="sendChat()" {% if not df_data %}disabled{% endif %}>
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = '{{ csrf_token }}';
+const HAS_DATA = {% if df_data %}true{% else %}false{% endif %};
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+if(zone) {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault(); zone.classList.remove('drag-over');
+        const f = e.dataTransfer.files[0];
+        if(f) uploadFile(f);
+    });
+}
+
+function handleFile(input) {
+    if(input.files[0]) uploadFile(input.files[0]);
+}
+
+function uploadFile(file) {
+    const overlay = document.getElementById('processingOverlay');
+    overlay.classList.add('show');
+    const fd = new FormData();
+    fd.append('document', file);
+    fd.append('csrfmiddlewaretoken', CSRF);
+    fetch('{% url "convert" %}', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                showToast('Document extracted successfully!', 'success');
+                window.location.reload();
+            } else {
+                overlay.classList.remove('show');
+                showToast(data.error || 'Extraction failed.', 'error');
+            }
+        })
+        .catch(() => {
+            overlay.classList.remove('show');
+            showToast('Network error. Please try again.', 'error');
+        });
+}
+
+function fillChat(text) {
+    const inp = document.getElementById('chatInput');
+    if(inp) { inp.value = text; inp.focus(); }
+}
+
+function sendChat() {
+    const inp = document.getElementById('chatInput');
+    const btn = document.getElementById('chatSend');
+    const msgs = document.getElementById('chatMessages');
+    const query = inp.value.trim();
+    if(!query || !HAS_DATA) return;
+
+    // Show user bubble
+    const userBubble = document.createElement('div');
+    userBubble.className = 'msg msg-user';
+    userBubble.textContent = query;
+    msgs.appendChild(userBubble);
+
+    // Thinking bubble
+    const thinkBubble = document.createElement('div');
+    thinkBubble.className = 'msg msg-ai thinking';
+    thinkBubble.textContent = '🤖 Thinking...';
+    msgs.appendChild(thinkBubble);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    inp.value = '';
+    btn.disabled = true;
+
+    fetch('{% url "chat" %}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+        body: JSON.stringify({ query })
+    })
+    .then(r => r.json())
+    .then(data => {
+        thinkBubble.classList.remove('thinking');
+        thinkBubble.textContent = data.reply || data.error || 'Done.';
+        msgs.scrollTop = msgs.scrollHeight;
+        btn.disabled = false;
+
+        if(data.columns && data.rows) {
+            updateTable(data.columns, data.rows);
+        }
+    })
+    .catch(() => {
+        thinkBubble.textContent = '❌ Error communicating with AI.';
+        btn.disabled = false;
+    });
+}
+
+function updateTable(cols, rows) {
+    const table = document.getElementById('dataTable');
+    if(!table) return;
+    // Update thead
+    const thead = table.querySelector('thead tr');
+    thead.innerHTML = cols.map(c => `<th>${c}</th>`).join('');
+    // Update tbody
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = rows.map(row =>
+        `<tr>${row.map(cell => `<td>${cell ?? '—'}</td>`).join('')}</tr>`
+    ).join('');
+    showToast('Data updated!', 'success');
+}
+
+function clearSession() {
+    if(confirm('Start a new conversion? Your current session will be cleared.')) {
+        // Clear via reload with a flag (simple approach)
+        fetch('{% url "dashboard" %}').then(() => window.location.href = '{% url "workspace" %}?clear=1');
+    }
+}
+
+// Auto-scroll chat
+document.addEventListener('DOMContentLoaded', () => {
+    const msgs = document.getElementById('chatMessages');
+    if(msgs) msgs.scrollTop = msgs.scrollHeight;
+});
+</script>
+{% endblock %}
